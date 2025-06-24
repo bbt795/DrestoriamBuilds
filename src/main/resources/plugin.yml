@@ -1,0 +1,10 @@
+name: DrestoriamBuilds
+version: '${project.version}'
+main: org.Drestoriam.drestoriamBuilds.DrestoriamBuilds
+api-version: 1.21
+authors: [ billbominecraft ]
+depend: [ WorldEdit, Citizens ]
+commands:
+  bp:
+    description: General usage command for DrestoriamBuilds
+    usage: /bp <help/create/update/[blueprint]/npchere/npcremove>
