@@ -3,7 +3,7 @@ version: '${project.version}'
 main: org.Drestoriam.drestoriamBuilds.DrestoriamBuilds
 api-version: 1.21
 authors: [ billbominecraft ]
-depend: [ WorldEdit, Citizens ]
+depend: [ WorldEdit, Citizens, helper ]
 commands:
   bp:
     description: General usage command for DrestoriamBuilds

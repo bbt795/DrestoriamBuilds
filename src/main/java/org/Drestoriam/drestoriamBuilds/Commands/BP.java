@@ -4,7 +4,6 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import org.Drestoriam.drestoriamBuilds.Classes.BuilderTrait;
 import org.Drestoriam.drestoriamBuilds.DrestoriamBuilds;
-import org.Drestoriam.drestoriamBuilds.SchemAPI.Schematic;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -86,52 +85,16 @@ public class BP implements CommandExecutor {
 
                 }
 
-                Schematic schematic = new Schematic(plugin, schematicFile, pacing);
-
                 NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, "Builder");
                 npc.addTrait(BuilderTrait.class);
                 npc.data().setPersistent("schematicName", schematicName);
                 npc.data().setPersistent("pacing", pacing);
                 npc.spawn(player.getLocation());
 
-                /*Thoughts so far:
-
-                - Create NPC at Player location
-                - Have NPC store schematic name and pacing value persistently
-                - Use Citizens click event to open inventory for item deposits and store block counts
-                - Adapt SchematicListener into BuildTask, to remove the need for click initiation
-                - Once NPC meets the blocks needed, it'll call BuildTask and start the building behind it
-                - NPC despawns/is removed once building is complete
-
-                This command would essentially just create the NPC, add the 'builder' trait, and then spawn the NPC
-                Seems like that may be the right idea???
-                 */
-
                 player.sendMessage(tag + ChatColor.GREEN + "Success");
 
                 break;
 
-            case "update":
-                //Logic for updating blueprint pace
-                // /bp update [blueprint name] [pacing]
-
-                /*
-
-                String blueprintName = args[1];
-                pacingMap.set(blueprintName, Integer.valueOf(args[2]));
-
-                 */
-                break;
-
-            case "npchere":
-                //Logic for moving NPC
-                // /bp npchere
-                break;
-
-            case "npcremove":
-                //Logic for removing NPC
-                // /bp npcremove
-                break;
 
             default:
                 player.sendMessage(tag + ChatColor.RED + "Please use a valid command, like /bp help");
@@ -150,10 +113,7 @@ public class BP implements CommandExecutor {
 
         if(player.hasPermission("bp.help.staff")){
 
-            player.sendMessage(ChatColor.DARK_AQUA + "- /bp create [blueprint] [schematic name] [pacing]");
-            player.sendMessage(ChatColor.DARK_AQUA + "- /bp update [blueprint name] [pacing in blocks/hour]");
-            player.sendMessage(ChatColor.DARK_AQUA + "- /bp npchere");
-            player.sendMessage(ChatColor.DARK_AQUA + "- /bp npcremove");
+            player.sendMessage(ChatColor.DARK_AQUA + "- /bp create [schematic name] [pacing]");
 
         }
 

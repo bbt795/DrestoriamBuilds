@@ -6,6 +6,7 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.math.Vector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.block.BaseBlock;
@@ -121,45 +122,90 @@ public class Schematic {
             // So unfortunately, WorldEdit doesn't support anything other than multiples of 90.
             // Here we round it to the nearest multiple of 90.
             yaw = MathsUtil.roundHalfUp((int) yaw, 90);
+            System.out.println("Yaw: " + yaw);
+            System.out.println("Origin: " + clipboard.getOrigin().toString());
             // Apply the rotation to the clipboard
-            final ClipboardHolder clipboardHolder = new ClipboardHolder(clipboard);
-            clipboardHolder.setTransform(new AffineTransform().rotateY(yaw));
-            final Clipboard transformedClipboard = clipboardHolder.getClipboard();
+            this.clipboard = clipboard.transform(new AffineTransform().rotateY(yaw * -1));
 
-            // Get all blocks in the schematic
-            final BlockVector3 minimumPoint = transformedClipboard.getMinimumPoint();
-            final BlockVector3 maximumPoint = transformedClipboard.getMaximumPoint();
+
+            // Max/Min referencing the schematics position in relation to the world origin
+            final BlockVector3 minimumPoint = clipboard.getMinimumPoint();
+            final BlockVector3 maximumPoint = clipboard.getMaximumPoint();
             final int minX = minimumPoint.x();
             final int maxX = maximumPoint.x();
             final int minY = minimumPoint.y();
             final int maxY = maximumPoint.y();
             final int minZ = minimumPoint.z();
             final int maxZ = maximumPoint.z();
+            System.out.println("Max: " + maxX + " " + maxY + " " + maxZ);
+            System.out.println("Min: " + minX + " " + minY + " " + minZ);
 
-            final int width = transformedClipboard.getRegion().getWidth();
-            final int height = transformedClipboard.getRegion().getHeight();
-            final int length = transformedClipboard.getRegion().getLength();
+            final int width = clipboard.getRegion().getWidth();
+            final int height = clipboard.getRegion().getHeight();
+            final int length = clipboard.getRegion().getLength();
             final int widthCentre = width / 2;
             final int heightCentre = height / 2;
             final int lengthCentre = length / 2;
 
             int minBlockY = loc.getWorld().getMaxHeight();
+
+            // Loops through to each block in the schematic, starting from front-most bottom left block
             for (int x = minX; x <= maxX; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = minZ; z <= maxZ; z++) {
+
+                        // Vector of block location, then getting the block itself
                         final BlockVector3 at = BlockVector3.at(x, y, z);
-                        BaseBlock block = transformedClipboard.getFullBlock(at);
+                        BaseBlock block = clipboard.getFullBlock(at);
 
                         // Ignore air blocks, change if you want
                         if (block.getBlockType().getMaterial().isAir()) continue;
 
                         // Here we find the relative offset based off the current location.
-                        final double offsetX = Math.abs(maxX - x);
-                        final double offsetY = Math.abs(maxY - y);
-                        final double offsetZ = Math.abs(maxZ - z);
+                        // Relative offset gotten by taking the absolute value of the difference between the furthest block (max) and current block locations
+                        // i.e. maxX = 150, x = 12, |150-12| = 138, so the offset of the x location is 138 blocks
+                        final int offsetX = Math.abs(maxX - x); //-436 - -436 = 0
+                        final int offsetY = Math.abs(maxY - y); //66 - 63 = 3
+                        final int offsetZ = Math.abs(maxZ - z); //-5 - -10 = 5
 
-                        final Location offsetLoc = loc.clone().subtract(offsetX - widthCentre, offsetY - heightCentre, offsetZ - lengthCentre);
+                        // Create the offset location by taking the provided location and subtracting the difference between the offset and the corresponding dimension
+                        // i.e. locX - (offsetX - width) = offsetLocX, so if locX = 50, offsetX = 138, width = 75, then 50 - (138 - 75) = 50 - 63 = -13
+                        // which would mean the location would be offset 13 blocks to the left of the origin
+                                                                        // 0-6=-6              3-3=0               5-7=-2
+
+                        Location offsetLoc = loc.clone();
+
+                        switch((int) yaw){
+
+                            case 0:
+
+                                offsetLoc = loc.clone().subtract(offsetX - width, offsetY - height, offsetZ + 1);
+
+                                break;
+
+                            case 90:
+
+                                offsetLoc = loc.clone().subtract(offsetX - width, offsetY - height, offsetZ - length);
+
+                                break;
+
+                            case -90:
+
+                                offsetLoc = loc.clone().subtract(offsetX + 1, offsetY - height, offsetZ + 1);
+
+                                break;
+
+                            case -180:
+
+                                offsetLoc = loc.clone().subtract(offsetX + 1, offsetY - height, offsetZ - length);
+
+                                break;
+                        }
+
+                        // If the y value of the offset location is less than the current minimum y value, set the minimum value to the offset location
                         if (offsetLoc.getBlockY() < minBlockY) minBlockY = offsetLoc.getBlockY();
+
+                        // Finally, put the block in the offset location
                         pasteBlocks.put(offsetLoc, block);
                     }
                 }

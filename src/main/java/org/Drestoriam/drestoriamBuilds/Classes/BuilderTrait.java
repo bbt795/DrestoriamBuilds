@@ -8,6 +8,7 @@ import net.citizensnpcs.api.util.DataKey;
 import org.Drestoriam.drestoriamBuilds.DrestoriamBuilds;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Scheduler;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Schematic;
+import org.Drestoriam.drestoriamBuilds.SchemAPI.Util.MathsUtil;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,15 +19,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @TraitName("Builder")
 public class BuilderTrait extends Trait {
 
-    protected BuilderTrait() {
+    public BuilderTrait() {
         super("Builder");
         plugin = JavaPlugin.getPlugin(DrestoriamBuilds.class);
     }
@@ -39,23 +37,18 @@ public class BuilderTrait extends Trait {
     @Persist boolean building = false;
     Schematic schematic;
 
-    public void load(DataKey key){
-
-
-
-    }
-
-    public void save(DataKey key){
-
-
-    }
-
     @EventHandler
     public void click(NPCRightClickEvent event){
 
         if(event.getNPC() != this.getNPC()) return;
+        if(building) {
 
-        Inventory NPCinventory = Bukkit.createInventory((Player) this.getNPC(), 27, "Material Deposit");
+            event.getClicker().sendMessage(DrestoriamBuilds.tag + ChatColor.DARK_AQUA + "Building in Progress...");
+            return;
+
+        }
+
+        Inventory NPCinventory = Bukkit.createInventory(null, 27, "Material Deposit");
         event.getClicker().openInventory(NPCinventory);
 
     }
@@ -63,13 +56,34 @@ public class BuilderTrait extends Trait {
     @EventHandler
     public void close(InventoryCloseEvent event) {
 
-        if (event.getInventory().getHolder() != this.getNPC()) return;
+        if (!event.getView().getTitle().equals("Material Deposit")) return;
 
+        boolean itemsExist = false;
         Inventory NPCinventory = event.getInventory();
         ItemStack[] itemContents = NPCinventory.getContents();
 
+        for(ItemStack item: itemContents){
+
+            if(item != null){
+
+                itemsExist = true;
+                break;
+
+            }
+
+        }
+
+        if (!itemsExist){
+
+            event.getPlayer().sendMessage(printMaterials());
+            return;
+
+        }
+
         //Check if the items provided in the inventory are required
         for (ItemStack item : itemContents) {
+
+            if(item == null) continue;
 
             if (itemMap.containsKey(item.getType())) {
 
@@ -104,37 +118,27 @@ public class BuilderTrait extends Trait {
         }
 
         //Check that all items require no more, return list of remaining items if true
-        StringBuilder remainingitems = new StringBuilder();
         for (Material material : itemMap.keySet()) {
 
-            if (itemMap.get(material) != 0 && remainingitems.isEmpty()) {
+            if(material.isAir()) itemMap.put(material, 0);
 
-                remainingitems.append(ChatColor.DARK_AQUA + "-= Remaining Items =-\n");
-                remainingitems.append(ChatColor.DARK_AQUA + itemMap.get(material).toString() + " " + material.toString() + "\n");
+            if(itemMap.get(material) != 0){
 
-            } else if (itemMap.get(material) != 0){
-
-                remainingitems.append(ChatColor.DARK_AQUA + itemMap.get(material).toString() + " " + material.toString() + "\n");
+                event.getPlayer().sendMessage(printMaterials());
+                return;
 
             }
 
         }
 
-        if(!remainingitems.isEmpty()){
-
-            remainingitems.append(ChatColor.DARK_AQUA + "-====+====-");
-            event.getPlayer().sendMessage(remainingitems.toString());
-            return;
-
-        }
-
         //If all materials are provided, start construction
         building = true;
-        Vector inverse = this.getNPC().getStoredLocation().getDirection().multiply(-1);
+        Vector inverse = this.getNPC().getStoredLocation().getDirection().multiply(-1).setY(-1);
+        System.out.println("X, Y, Z: " + inverse.getX() + ", " + inverse.getY() + ", " + inverse.getZ());
 
         Collection<Location> locationCollection = schematic.pasteSchematic(
-                this.getNPC().getStoredLocation().add(inverse.multiply(2)),
-                (Player) this.getNPC(),
+                this.getNPC().getStoredLocation().add(inverse),
+                (Player) this.getNPC().getEntity(),
                 schematic.getPacing(),
                 Schematic.Options.IGNORE_TRANSPARENT, Schematic.Options.PLACE_ANYWHERE, Schematic.Options.REALISTIC);
         if (locationCollection != null) {
@@ -160,6 +164,9 @@ public class BuilderTrait extends Trait {
     @Override
     public void onSpawn(){
 
+        schematicName = this.npc.data().get("schematicName");
+        pacing = this.npc.data().get("pacing");
+
         File schematicFile = new File(plugin.getDataFolder(),"schematics\\" + schematicName + ".schem");
 
         schematic = new Schematic(plugin, schematicFile, pacing);
@@ -167,10 +174,33 @@ public class BuilderTrait extends Trait {
 
     }
 
-    @Override
-    public void onDespawn(){
+    private String printMaterials(){
 
+        StringBuilder remainingitems = new StringBuilder();
+        for (Material material : itemMap.keySet()) {
 
+            if(material.isAir()){
+
+                continue;
+
+            }
+
+            if (itemMap.get(material) != 0 && remainingitems.isEmpty()) {
+
+                remainingitems.append(ChatColor.DARK_AQUA + "-= Remaining Items =-\n");
+                remainingitems.append(ChatColor.DARK_AQUA + itemMap.get(material).toString() + " " + material + "\n");
+
+            } else if (itemMap.get(material) != 0){
+
+                remainingitems.append(ChatColor.DARK_AQUA + itemMap.get(material).toString() + " " + material + "\n");
+
+            }
+
+        }
+
+        remainingitems.append(ChatColor.DARK_AQUA + "-====++++++++====-");
+
+        return remainingitems.toString();
 
     }
 
