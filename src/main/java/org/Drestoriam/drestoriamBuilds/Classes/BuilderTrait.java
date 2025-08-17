@@ -4,11 +4,9 @@ import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
-import net.citizensnpcs.api.util.DataKey;
 import org.Drestoriam.drestoriamBuilds.DrestoriamBuilds;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Scheduler;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Schematic;
-import org.Drestoriam.drestoriamBuilds.SchemAPI.Util.MathsUtil;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -167,7 +165,7 @@ public class BuilderTrait extends Trait {
         schematicName = this.npc.data().get("schematicName");
         pacing = this.npc.data().get("pacing");
 
-        File schematicFile = new File(plugin.getDataFolder(),"schematics\\" + schematicName + ".schem");
+        File schematicFile = new File(plugin.getDataFolder(),"schematics/" + schematicName + ".schem");
 
         schematic = new Schematic(plugin, schematicFile, pacing);
         itemMap = schematic.getSchematicMaterialData();

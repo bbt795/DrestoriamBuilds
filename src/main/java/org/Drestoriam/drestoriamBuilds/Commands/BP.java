@@ -76,7 +76,7 @@ public class BP implements CommandExecutor {
                 String schematicName = args[1];
                 int pacing = Integer.parseInt(args[2]);
 
-                File schematicFile = new File(plugin.getDataFolder(),"schematics\\" + schematicName + ".schem");
+                File schematicFile = new File(plugin.getDataFolder(),"schematics/" + schematicName + ".schem");
 
                 if(!schematicFile.exists()){
 
