@@ -122,8 +122,6 @@ public class Schematic {
             // So unfortunately, WorldEdit doesn't support anything other than multiples of 90.
             // Here we round it to the nearest multiple of 90.
             yaw = MathsUtil.roundHalfUp((int) yaw, 90);
-            System.out.println("Yaw: " + yaw);
-            System.out.println("Origin: " + clipboard.getOrigin().toString());
             // Apply the rotation to the clipboard
             this.clipboard = clipboard.transform(new AffineTransform().rotateY(yaw * -1));
 
@@ -137,8 +135,6 @@ public class Schematic {
             final int maxY = maximumPoint.y();
             final int minZ = minimumPoint.z();
             final int maxZ = maximumPoint.z();
-            System.out.println("Max: " + maxX + " " + maxY + " " + maxZ);
-            System.out.println("Min: " + minX + " " + minY + " " + minZ);
 
             final int width = clipboard.getRegion().getWidth();
             final int height = clipboard.getRegion().getHeight();

@@ -132,7 +132,6 @@ public class BuilderTrait extends Trait {
         //If all materials are provided, start construction
         building = true;
         Vector inverse = this.getNPC().getStoredLocation().getDirection().multiply(-1).setY(-1);
-        System.out.println("X, Y, Z: " + inverse.getX() + ", " + inverse.getY() + ", " + inverse.getZ());
 
         Collection<Location> locationCollection = schematic.pasteSchematic(
                 this.getNPC().getStoredLocation().add(inverse),
