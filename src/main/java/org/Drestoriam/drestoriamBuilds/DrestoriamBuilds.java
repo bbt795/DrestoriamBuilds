@@ -30,8 +30,6 @@ public final class DrestoriamBuilds extends JavaPlugin {
 
         }
 
-        System.out.println("DrestoriamBuilds is now enabled!");
-
     }
 
     @Override
