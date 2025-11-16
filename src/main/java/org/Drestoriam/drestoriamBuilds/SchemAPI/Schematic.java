@@ -191,6 +191,7 @@ public class Schematic {
 
                                 break;
 
+                            case 180:
                             case -180:
 
                                 offsetLoc = loc.clone().subtract(offsetX + 1, offsetY - height, offsetZ - length);

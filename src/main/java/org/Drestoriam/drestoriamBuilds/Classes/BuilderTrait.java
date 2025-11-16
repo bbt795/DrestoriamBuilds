@@ -1,9 +1,13 @@
 package org.Drestoriam.drestoriamBuilds.Classes;
 
+import com.drestoriam.drestoriammoney.DrestoriamMoney;
+import com.mordonia.mcore.MCore;
+import com.mordonia.mcore.MCoreAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
+import net.citizensnpcs.api.util.DataKey;
 import org.Drestoriam.drestoriamBuilds.DrestoriamBuilds;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Scheduler;
 import org.Drestoriam.drestoriamBuilds.SchemAPI.Schematic;
@@ -17,23 +21,67 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.io.File;
+import java.math.BigDecimal;
 import java.util.*;
+
+import static org.Drestoriam.drestoriamBuilds.DrestoriamBuilds.tag;
 
 @TraitName("Builder")
 public class BuilderTrait extends Trait {
 
     public BuilderTrait() {
         super("Builder");
-        plugin = JavaPlugin.getPlugin(DrestoriamBuilds.class);
+        buildsPlugin = JavaPlugin.getPlugin(DrestoriamBuilds.class);
+        moneyPlugin = JavaPlugin.getPlugin(DrestoriamMoney.class);
+        mCoreAPI = MCore.getPlugin(MCore.class).getmCoreAPI();
     }
 
-    DrestoriamBuilds plugin = null;
+    DrestoriamBuilds buildsPlugin = null;
+    DrestoriamMoney moneyPlugin = null;
+    MCoreAPI mCoreAPI = null;
 
     @Persist Map<Material, Integer> itemMap;
     @Persist String schematicName;
     @Persist int pacing;
+    @Persist String price;
+    @Persist boolean paid = false;
     @Persist boolean building = false;
     Schematic schematic;
+
+    @Override
+    public void onSpawn(){
+
+        schematicName = this.npc.data().get("schematicName");
+        pacing = this.npc.data().get("pacing");
+        price = this.npc.data().get("price");
+
+        File schematicFile = new File(buildsPlugin.getDataFolder(), "schematics/" + schematicName + ".schem");
+        schematic = new Schematic(buildsPlugin, schematicFile, pacing);
+
+        if(itemMap == null) {
+
+            System.out.println("ItemMap is null...");
+            itemMap = schematic.getSchematicMaterialData();
+
+        }
+
+    }
+
+    @Override
+    public void load(DataKey key){
+
+        itemMap = new HashMap<>();
+        DataKey itemKey = key.getRelative("itemMap");
+        Map<String, Object> testItemMap = itemKey.getValuesDeep();
+
+        for(String mat : testItemMap.keySet()){
+
+            Material material = Material.matchMaterial(mat);
+            itemMap.put(material, (Integer) testItemMap.get(mat));
+
+        }
+
+    }
 
     @EventHandler
     public void click(NPCRightClickEvent event){
@@ -41,7 +89,37 @@ public class BuilderTrait extends Trait {
         if(event.getNPC() != this.getNPC()) return;
         if(building) {
 
-            event.getClicker().sendMessage(DrestoriamBuilds.tag + ChatColor.DARK_AQUA + "Building in Progress...");
+            event.getClicker().sendMessage(tag + ChatColor.DARK_AQUA + "Building in Progress...");
+            return;
+
+        }
+
+        Player player = event.getClicker();
+
+        if(!paid){
+
+            if(!player.hasPermission("dremoney.cityleader.*")){
+
+                player.sendMessage(tag + ChatColor.RED + "Your city leader must pay a fee of $" + price + " before construction can begin.");
+                return;
+
+            }
+
+            String playerKingdom = mCoreAPI.getmPlayerManager().getPlayerMap().get(player.getUniqueId().toString()).getKingdom();
+            BigDecimal balance = new BigDecimal(moneyPlugin.getConfig().getString("citybanks." + playerKingdom + ".balance"));
+            BigDecimal priceBD = new BigDecimal(price);
+
+            if(balance.compareTo(priceBD) < 0){
+
+                player.sendMessage(tag + ChatColor.RED + "Your city doesn't have enough money to fund this build.");
+                return;
+
+            }
+
+            moneyPlugin.getConfig().set("citybanks." + playerKingdom + ".balance", balance.subtract(priceBD));
+            moneyPlugin.saveConfig();
+            paid = true;
+            player.sendMessage(tag + ChatColor.GREEN + "Successfully paid! Right click again to see the required materials!");
             return;
 
         }
@@ -73,6 +151,7 @@ public class BuilderTrait extends Trait {
 
         if (!itemsExist){
 
+            cleanItems();
             event.getPlayer().sendMessage(printMaterials());
             return;
 
@@ -118,10 +197,9 @@ public class BuilderTrait extends Trait {
         //Check that all items require no more, return list of remaining items if true
         for (Material material : itemMap.keySet()) {
 
-            if(material.isAir()) itemMap.put(material, 0);
-
             if(itemMap.get(material) != 0){
 
+                cleanItems();
                 event.getPlayer().sendMessage(printMaterials());
                 return;
 
@@ -131,7 +209,7 @@ public class BuilderTrait extends Trait {
 
         //If all materials are provided, start construction
         building = true;
-        Vector inverse = this.getNPC().getStoredLocation().getDirection().multiply(-1).setY(-1);
+        Vector inverse = this.getNPC().getStoredLocation().getDirection().multiply(-1).setY(-2);
 
         Collection<Location> locationCollection = schematic.pasteSchematic(
                 this.getNPC().getStoredLocation().add(inverse),
@@ -141,7 +219,7 @@ public class BuilderTrait extends Trait {
         if (locationCollection != null) {
             List<Location> locations = new ArrayList<>(locationCollection);
             Scheduler scheduler = new Scheduler();
-            scheduler.setTask(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+            scheduler.setTask(Bukkit.getScheduler().scheduleSyncRepeatingTask(buildsPlugin, () -> {
                 for (Location location : locations) {
                     if (locations.get(locations.size() - 1).getBlock().getType() != Material.AIR) {
                         scheduler.cancel();
@@ -156,19 +234,6 @@ public class BuilderTrait extends Trait {
         }
 
         this.npc.destroy();
-    }
-
-    @Override
-    public void onSpawn(){
-
-        schematicName = this.npc.data().get("schematicName");
-        pacing = this.npc.data().get("pacing");
-
-        File schematicFile = new File(plugin.getDataFolder(),"schematics/" + schematicName + ".schem");
-
-        schematic = new Schematic(plugin, schematicFile, pacing);
-        itemMap = schematic.getSchematicMaterialData();
-
     }
 
     private String printMaterials(){
@@ -198,6 +263,28 @@ public class BuilderTrait extends Trait {
         remainingitems.append(ChatColor.DARK_AQUA + "-====++++++++====-");
 
         return remainingitems.toString();
+
+    }
+
+    private void cleanItems(){
+
+        for (Material material : itemMap.keySet()) {
+
+            if(material.isAir()) itemMap.put(material, 0);
+
+            if(Tag.WALL_SIGNS.isTagged(material) || Tag.WALL_HANGING_SIGNS.isTagged(material)){
+
+                String materialName = material.toString();
+                String woodType = materialName.substring(0, materialName.indexOf('_'));
+                String signType = materialName.substring(materialName.indexOf('_') + 6);
+
+                itemMap.put(Material.getMaterial(woodType + "_" + signType), itemMap.get(Material.getMaterial(woodType + "_" + signType)) + itemMap.get(material));
+                itemMap.put(material, 0);
+
+            }
+
+
+        }
 
     }
 

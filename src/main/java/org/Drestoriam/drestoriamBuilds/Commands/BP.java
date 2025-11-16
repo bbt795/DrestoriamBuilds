@@ -50,11 +50,11 @@ public class BP implements CommandExecutor {
 
             case "create":
                 //Logic for creating blueprint
-                // /bp create [schematic name] [pacing in ticks per block]
+                // /bp create [schematic name] [pacing in ticks per block] [price]
 
-                if(args.length != 3){
+                if(args.length != 4){
 
-                    player.sendMessage(tag + ChatColor.RED + "Did you mean /bp create [schematic name] [pacing]?");
+                    player.sendMessage(tag + ChatColor.RED + "Did you mean /bp create [schematic name] [pacing] [price]?");
                     return true;
 
                 }
@@ -74,7 +74,6 @@ public class BP implements CommandExecutor {
                 }
 
                 String schematicName = args[1];
-                int pacing = Integer.parseInt(args[2]);
 
                 File schematicFile = new File(plugin.getDataFolder(),"schematics/" + schematicName + ".schem");
 
@@ -85,10 +84,14 @@ public class BP implements CommandExecutor {
 
                 }
 
+                int pacing = Integer.parseInt(args[2]);
+                String price = args[3];
+
                 NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, "Builder");
                 npc.addTrait(BuilderTrait.class);
                 npc.data().setPersistent("schematicName", schematicName);
                 npc.data().setPersistent("pacing", pacing);
+                npc.data().setPersistent("price", price);
                 npc.spawn(player.getLocation());
 
                 player.sendMessage(tag + ChatColor.GREEN + "Success");
@@ -113,7 +116,7 @@ public class BP implements CommandExecutor {
 
         if(player.hasPermission("bp.help.staff")){
 
-            player.sendMessage(ChatColor.DARK_AQUA + "- /bp create [schematic name] [pacing]");
+            player.sendMessage(ChatColor.DARK_AQUA + "- /bp create [schematic name] [pacing] [price]");
 
         }
 
